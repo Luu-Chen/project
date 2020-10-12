@@ -1,0 +1,75 @@
+<?php
+
+/**
+ * @file
+ * Provides tokens for Canonical URL, Previous page URL and Next page URL.
+ */
+
+/**
+ * Implements hook_token_info().
+ */
+function pager_tokens_token_info() {
+  return array(
+    'tokens' => array(
+      'url' => array(
+        'with-previous-page-number' => array(
+          'name' => t('URL with previous page number'),
+          'description' => t('URL with previous page number.'),
+        ),
+        'with-current-page-number' => array(
+          'name' => t('URL with current page number'),
+          'description' => t('URL with current page number.'),
+        ),
+        'with-next-page-number' => array(
+          'name' => t('URL with next page number'),
+          'description' => t('URL with next page number.'),
+        ),
+      ),
+    ),
+  );
+}
+
+/**
+ * Implements hook_tokens().
+ */
+function pager_tokens_tokens($type, $tokens, array $data = array(), array $options = array()) {
+  $replacements = array();
+  if ($type == 'url') {
+    $page = pager_find_page();
+    $url_options = array('absolute' => TRUE, 'query' => drupal_get_query_parameters());
+    foreach ($tokens as $name => $original) {
+      if ($name == 'with-previous-page-number' && $page) {
+        if ($page > 1) {
+          $url_options['query']['page'] = $page - 1;
+        }
+        else {
+          unset($url_options['query']['page']);
+        }
+        $replacements[$original] = url($data['path'], $url_options);
+      }
+      if ($name == 'with-current-page-number') {
+        $replacements[$original] = url($data['path'], $url_options);
+      }
+      if ($name == 'with-next-page-number') {
+        $url_options['query']['page'] = $page + 1;
+        $replacements[$original] = url($data['path'], $url_options);
+      }
+    }
+  }
+  return $replacements;
+}
+
+/**
+ * Implements hook_html_head_alter().
+ * Remove next and prev metatags when their pages don't exist.
+ */
+function pager_tokens_html_head_alter(&$head_elements) {
+  global $pager_total;
+  $page = pager_find_page();
+  if (isset($head_elements['metatag_next']) && ($page >= ((int) $pager_total[0] - 1))) {
+    unset($head_elements['metatag_next']);
+  }
+  if (isset($head_elements['metatag_prev']) && ($page > ((int) $pager_total[0] - 1))) {
+    unset($head_elements['metatag_prev']);
+  }
+}
